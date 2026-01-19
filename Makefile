@@ -29,7 +29,7 @@ dev-init: # Initialize current folder with Docker and Zed configs
 		echo "USER root" >> .devcontainer/Dockerfile; \
 		echo "RUN mkdir -p /var/run/sshd && ssh-keygen -A" >> .devcontainer/Dockerfile; \
 		echo "USER root" >> .devcontainer/Dockerfile; \
-		ln -sf ../dev-init/Makefile Makefile; \
+		ln -sf ../dev-init/Makefile Makefile 2>/dev/null; \
 		cp ../dev-init/.devcontainer/docker-compose.yml .devcontainer/docker-compose.yml; \
 		echo "✨ Project-specific files created."; \
 	else \
@@ -59,11 +59,15 @@ down: # Stop and remove the project container
 	@docker compose -f .devcontainer/docker-compose.yml down
 
 shell: # Enter the container terminal as 'user' in the repo directory
-	@docker exec -it \
-		--user user \
-		--workdir /workspaces/repo \
-		$(PROJ_NAME)-app bash
+	@if [ -f /.dockerenv ]; then \
+		echo "✅ You're already inside the container!"; \
+	else \
+		docker exec -it \
+			--user user \
+			--workdir /workspaces/repo \
+			$(PROJ_NAME)-app bash; \
+	fi
 
-fresh: #Reset docker container
-	docker rm -f $(PROJ_NAME)-app
+fresh: # Reset docker container
+	@docker rm -f $(PROJ_NAME)-app
 	@$(MAKE) up
