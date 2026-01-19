@@ -1,0 +1,14 @@
+# Environment files (may contain SSH keys)
+.devcontainer/.env
+
+# Editor-generated files
+.zed/tasks.json
+
+# Temporary files
+Makefile.new
+
+# Project registry
+projects.reg
+
+# Persistent user dotfiles (created at runtime)
+user/
