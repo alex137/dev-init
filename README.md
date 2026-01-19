@@ -76,9 +76,49 @@ Selecting this will trigger a rebuild of your global toolset from within your cu
 
 ## 🔐 Security & Customization
 
-### SSH Keys
+### SSH Key-Based Authentication
 
-To login without a password, your `dev-init` setup is pre-configured to look for your public key. Ensure your local `~/.ssh/id_rsa.pub` exists; it will be mounted automatically into the container by `docker-compose`.
+The container uses **SSH key-based authentication only** (password login is disabled for security). This makes it safe to expose the SSH port for remote access when you're on the road.
+
+#### Local Development
+
+For local development, set your SSH public key before starting the container:
+
+```bash
+# Add to your .env file (recommended)
+echo "SSH_AUTHORIZED_KEYS=$(cat ~/.ssh/id_ed25519.pub)" >> .env
+
+# Or export before docker-compose up
+export SSH_AUTHORIZED_KEYS="$(cat ~/.ssh/id_ed25519.pub)"
+docker-compose up -d
+```
+
+Then connect:
+```bash
+ssh -p $HOST_PORT_SSH user@localhost
+```
+
+#### Remote Access (On the Road)
+
+To securely access your dev container from anywhere:
+
+1. **Expose the SSH port** on your server/home machine (use your router's port forwarding or a service like Tailscale/Cloudflare Tunnel)
+
+2. **Set your SSH public key** in the container's environment:
+   ```bash
+   # In your .env file on the server
+   SSH_AUTHORIZED_KEYS="ssh-ed25519 AAAA... your-email@example.com"
+   ```
+
+3. **Connect from your laptop**:
+   ```bash
+   ssh -i ~/.ssh/id_ed25519 -p <exposed-port> user@your-server-ip
+   ```
+
+**Security notes:**
+- Password authentication is completely disabled
+- Root login via SSH is disabled
+- Only users with authorized keys can connect
 
 ### Project-Specific Tools
 
