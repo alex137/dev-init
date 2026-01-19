@@ -4,21 +4,21 @@ set -e
 if [ -d /workspaces/repo ]; then
     mkdir -p /workspaces/repo/user
 
-    # Seed dotfiles if missing
+    # Seed dotfiles in persistent storage if missing
     [ -f /workspaces/repo/user/.bashrc ] || cp /etc/skel/.bashrc /workspaces/repo/user/
     [ -f /workspaces/repo/user/.profile ] || cp /etc/skel/.profile /workspaces/repo/user/
 
-    # Only setup symlink if not already done
-    if [ ! -L /home/user ]; then
-        # Preserve any existing content from the image
-        if [ -d /home/user ]; then
-            cp -rn /home/user/. /workspaces/repo/user/ 2>/dev/null || true
-            rm -rf /home/user
+    # Symlink individual dotfiles from /home/user to persistent storage
+    # (Don't replace /home/user itself - it may have volume mounts like .claude)
+    for f in .bashrc .profile; do
+        if [ -f /workspaces/repo/user/$f ] && [ ! -L /home/user/$f ]; then
+            rm -f /home/user/$f 2>/dev/null || true
+            ln -sf /workspaces/repo/user/$f /home/user/$f
         fi
-        ln -sf /workspaces/repo/user /home/user
-    fi
+    done
 
     chown -R user:user /workspaces/repo/user
+    chown -h user:user /home/user/.bashrc /home/user/.profile 2>/dev/null || true
 fi
 
 # Set up SSH authorized_keys from environment variable if provided
