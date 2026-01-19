@@ -1,11 +1,15 @@
 services:
   app:
+    container_name: ${COMPOSE_PROJECT_NAME}-app
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
     volumes:
       - ..:/workspaces/repo
       - claude_config:/home/user/.claude
+    ports:
+      # Maps the unique port from .env to the container's SSH port
+      - "${HOST_PORT_SSH}:22"
     tty: true
 
 # THIS IS THE PART THAT WAS MISSING OR INCOMPLETE:
