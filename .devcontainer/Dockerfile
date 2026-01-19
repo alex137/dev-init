@@ -90,5 +90,14 @@ RUN chown -R user:user /workspaces/repo
 
 
 USER root
+
+# Ensure the sshd directory exists and keys are generated
+RUN mkdir -p /var/run/sshd && \
+    ssh-keygen -A && \
+    chmod 600 /etc/ssh/ssh_host_*_key
+
+#RUN mkdir -p /var/run/sshd && ssh-keygen -A
+
 EXPOSE 22
+
 CMD ["/usr/sbin/sshd", "-D"]

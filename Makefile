@@ -1,5 +1,8 @@
 MASTER_IMAGE = dev-env:latest
 PROJ_NAME = $(shell basename $$(pwd))
+export COMPOSE_PROJECT_NAME := dev-init
+-include .devcontainer/.env
+
 
 .PHONY: build-master test-master dev-init setup-zed up down shell
 
@@ -86,7 +89,7 @@ endif
 
 up: # Start the dev container in the background
 	@docker compose -f .devcontainer/docker-compose.yml up -d
-	@echo "🚀 Container is up. Port 2222 is open for Zed SSH."
+	@echo "🚀 Container is up. Port $(HOST_PORT_SSH) is open for SSH."
 
 down: # Stop and remove the project container
 	@docker compose -f .devcontainer/docker-compose.yml down
