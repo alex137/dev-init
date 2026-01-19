@@ -30,4 +30,9 @@ if [ -n "$SSH_AUTHORIZED_KEYS" ]; then
     chown -R user:user /home/user/.ssh
 fi
 
+# Fix permissions on .claude volume mount (created by docker-compose)
+if [ -d /home/user/.claude ]; then
+    chown -R user:user /home/user/.claude
+fi
+
 exec "$@"
