@@ -96,7 +96,12 @@ RUN mkdir -p /var/run/sshd && \
     ssh-keygen -A && \
     chmod 600 /etc/ssh/ssh_host_*_key
 
-
 EXPOSE 22
+
+# 7. Entrypoint for persistent home directory
+COPY .devcontainer/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
 USER root
 CMD ["/usr/sbin/sshd", "-D"]
