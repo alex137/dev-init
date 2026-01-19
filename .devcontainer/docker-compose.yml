@@ -5,4 +5,9 @@ services:
       dockerfile: .devcontainer/Dockerfile
     volumes:
       - ..:/workspaces/repo
+      - claude_config:/home/user/.claude
     tty: true
+
+# THIS IS THE PART THAT WAS MISSING OR INCOMPLETE:
+volumes:
+  claude_config:

@@ -42,5 +42,10 @@ up: # Start the dev container in the background
 down: # Stop and remove the project container
 	@docker compose -f .devcontainer/docker-compose.yml down
 
-shell: # Enter the container terminal via docker exec
-	@docker exec -it $$(docker ps -qf "name=.devcontainer-app") bash
+
+
+shell: # Enter the container terminal as 'user' in the repo directory
+	@docker exec -it \
+		--user user \
+		--workdir /workspaces/repo \
+		$$(docker ps -qf "name=.devcontainer-app") bash
