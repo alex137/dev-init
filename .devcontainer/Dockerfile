@@ -70,15 +70,18 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 ARG USERNAME=user
 RUN if getent group 1000; then groupmod -n $USERNAME $(getent group 1000 | cut -d: -f1); else groupadd --gid 1000 $USERNAME; fi && \
     if getent passwd 1000; then usermod -l $USERNAME -m -d /home/$USERNAME $(getent passwd 1000 | cut -d: -f1); else useradd --uid 1000 --gid 1000 -m $USERNAME; fi && \
-    echo "$USERNAME:password" | chpasswd && \
+    passwd -l $USERNAME && \
     apt-get update && apt-get install -y sudo && \
     echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME && \
     rm -rf /var/lib/apt/lists/*
 
-# 6. SSH Config (Always Bottom)
-RUN mkdir -p /var/run/sshd && echo "root:zed" | chpasswd && \
-    sed -i "s/#PasswordAuthentication yes/PasswordAuthentication yes/" /etc/ssh/sshd_config && \
-    sed -i "s/#PermitRootLogin prohibit-password/PermitRootLogin yes/" /etc/ssh/sshd_config
+# 6. SSH Config - Key-based auth only (secure for remote access)
+RUN mkdir -p /var/run/sshd && passwd -l root && \
+    sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
+    sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config && \
+    sed -i 's/^#\?PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/^#\?ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config && \
+    mkdir -p /home/$USERNAME/.ssh && chmod 700 /home/$USERNAME/.ssh && chown $USERNAME:$USERNAME /home/$USERNAME/.ssh
 
 
 

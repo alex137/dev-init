@@ -21,4 +21,13 @@ if [ -d /workspaces/repo ]; then
     chown -R user:user /workspaces/repo/user
 fi
 
+# Set up SSH authorized_keys from environment variable if provided
+if [ -n "$SSH_AUTHORIZED_KEYS" ]; then
+    mkdir -p /home/user/.ssh
+    echo "$SSH_AUTHORIZED_KEYS" > /home/user/.ssh/authorized_keys
+    chmod 700 /home/user/.ssh
+    chmod 600 /home/user/.ssh/authorized_keys
+    chown -R user:user /home/user/.ssh
+fi
+
 exec "$@"
