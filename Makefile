@@ -1,4 +1,5 @@
 MASTER_IMAGE = dev-env:latest
+PROJ_NAME = $(shell basename $$(pwd))
 
 .PHONY: build-master test-master dev-init setup-zed up down shell
 
@@ -34,30 +35,48 @@ sdev-init: # Link project to Master Environment and setup local files
 	@echo "✅ Project initialized. Run 'make up' to start."
 
 
+	#echo "FROM $(MASTER_IMAGE)" > .devcontainer/Dockerfile; \
+	#echo "WORKDIR /workspaces/repo" >> .devcontainer/Dockerfile; \
+	#echo "USER user" >> .devcontainer/Dockerfile; \
+	#ln -sf ../dev-init/Makefile Makefile; \
+	#cp ../dev-init/.devcontainer/docker-compose.yml .devcontainer/docker-compose.yml; \
+	#echo "✨ Project-specific files created."; \
+
 dev-init:
 	@echo "🏗️  Initializing project environment..."
 	@mkdir -p .devcontainer
-	# Use ../../ to get from .devcontainer/ -> root/ -> parent/ to find dev-init
-	@echo "FROM $(MASTER_IMAGE)" > .devcontainer/Dockerfile
-	#@ln -sf ../../dev-init/.devcontainer/Dockerfile .devcontainer/Dockerfile
-	@cp ../dev-init/.devcontainer/docker-compose.yml .devcontainer/docker-compose.yml
-	#@ln -sf ../dev-init/Makefile Makefile
+	echo $(PROJ_NAME)
+	@if [ "$(PROJ_NAME)" != "dev-init" ]; then \
+	    echo "FROM $(MASTER_IMAGE)" > .devcontainer/Dockerfile; \
+		echo "WORKDIR /workspaces/repo" >> .devcontainer/Dockerfile; \
+		echo "USER user" >> .devcontainer/Dockerfile; \
+		ln -sf ../dev-init/Makefile Makefile; \
+		cp ../dev-init/.devcontainer/docker-compose.yml .devcontainer/docker-compose.yml; \
+		echo "✨ Project-specific files created."; \
+	else \
+		echo "🏠 Operating in dev-init root. Skipping self-copy."; \
+	fi
 	@$(MAKE) setup-zed
-	@echo "✅ Setup complete."
-
-
-ssdev-init:
-	@echo "🏗️  Initializing project environment..."
-	@mkdir -p .devcontainer
-	# Source files are in the dev-init folder relative to the project root
-	@ln -sf ../dev-init/.devcontainer/Dockerfile .devcontainer/Dockerfile
-	@cp ../dev-init/.devcontainer/docker-compose.yml .devcontainer/docker-compose.yml
-	@$(MAKE) setup-zed
-	@echo "✅ Setup complete. Local .devcontainer/docker-compose.yml is ready."
+	@echo "✅ Setup complete for $(PROJ_NAME)."
 
 setup-zed:
-	@bash ../dev-init/.devcontainer/gen_tasks.sh
+	@if [ "$(PROJ_NAME)" = "dev-init" ]; then \
+		bash .devcontainer/gen_tasks.sh; \
+	else \
+		bash ../dev-init/.devcontainer/gen_tasks.sh; \
+	fi
 
+
+list: # Show all registered projects and their ports
+	@echo "📋 Registered Projects:"
+	@echo "-----------------------"
+	@printf "%-25s | %-10s\n" "Project Name" "Port"
+	@echo "-----------------------"
+	@if [ -f projects.reg ]; then \
+		awk -F' : ' '{printf "%-25s | %-10s\n", $$1, $$2}' projects.reg; \
+	else \
+		echo "No projects registered yet."; \
+	fi
 # --- DOCKER COMMANDS (Run from project folder) ---
 
 ifneq ("$(wildcard .devcontainer/.env)","")
