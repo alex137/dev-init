@@ -96,8 +96,7 @@ RUN mkdir -p /var/run/sshd && \
     ssh-keygen -A && \
     chmod 600 /etc/ssh/ssh_host_*_key
 
-#RUN mkdir -p /var/run/sshd && ssh-keygen -A
 
 EXPOSE 22
-
+USER root
 CMD ["/usr/sbin/sshd", "-D"]

@@ -97,3 +97,9 @@ RUN apt-get install -y some-special-tool
 * **"Image dev-env:latest not found":** You haven't run `make build-master` in the `dev-init` folder yet.
 * **"Permission Denied":** If files are owned by root, run `sudo chown -R $USER:$USER .` on your host.
 * **Zed connection fails:** Run `make status` to ensure the SSH server inside the container is reachable.
+
+
+## TODO
+gitignore in the other eports
+ignore .env and projects.reg here
+tasks.json
