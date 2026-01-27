@@ -13,6 +13,9 @@ services:
     environment:
       # SSH public key for secure remote access (set in .env or export before docker-compose up)
       - SSH_AUTHORIZED_KEYS=${SSH_AUTHORIZED_KEYS:-}
+      # Claude API key - passed at runtime, never written to disk
+      # Set this in your shell before 'make up': export ANTHROPIC_API_KEY=sk-...
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     tty: true
 
 volumes:
