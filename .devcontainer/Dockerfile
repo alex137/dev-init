@@ -75,7 +75,13 @@ RUN if getent group 1000; then groupmod -n $USERNAME $(getent group 1000 | cut -
     echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME && \
     rm -rf /var/lib/apt/lists/*
 
-# 6. SSH Config - Key-based auth only (secure for remote access)
+# 6. Configure npm for user-writable global installs (no sudo needed)
+RUN mkdir -p /home/$USERNAME/.npm-global && \
+    chown -R $USERNAME:$USERNAME /home/$USERNAME/.npm-global && \
+    su - $USERNAME -c "npm config set prefix '/home/$USERNAME/.npm-global'"
+ENV PATH="/home/user/.npm-global/bin:${PATH}"
+
+# 7. SSH Config - Key-based auth only (secure for remote access)
 RUN mkdir -p /var/run/sshd && passwd -l root && \
     sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
     sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config && \
