@@ -9,7 +9,15 @@
 
 ### Why This Matters
 
-When you run `npm install` or `pip install`, you're executing code written by strangers. In a normal setup, that code has access to:
+**Claude Code itself warns you about these risks.** When you start a session, you'll see:
+
+> *"Claude can make mistakes. You should always review Claude's responses, especially when running code."*
+>
+> *"Due to prompt injection risks, only use it with code you trust."*
+>
+> *"Claude Code may read, write, or execute files contained in this directory. This can pose security risks, so only use files and bash commands from trusted sources."*
+
+These warnings are real. When you run `npm install` or `pip install`, you're executing code written by strangers. In a normal setup, that code has access to:
 - Your SSH keys (push to any repo you have access to)
 - Your cloud credentials (`~/.aws`, `~/.gcp`)
 - Your API keys and tokens
@@ -31,7 +39,9 @@ This gives you a **forced review checkpoint** - nothing leaves your machine with
 
 Claude Code settings and history persist between sessions, but **credentials are automatically deleted** on container startup. This prevents malicious packages from stealing your API key.
 
-To authenticate, pass your API key as an environment variable (never written to disk):
+#### Method 1: API Key (Simpler)
+
+Pass your API key as an environment variable (never written to disk):
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
@@ -40,9 +50,28 @@ make shell
 claude  # Works immediately, no login needed
 ```
 
-**Remaining vulnerability:** If you set `ANTHROPIC_API_KEY` and then run `npm install` (or pip, cargo, etc.), a malicious package could read the key from the environment and exfiltrate it.
+**Vulnerability:** If you set `ANTHROPIC_API_KEY` and then run `npm install`, a malicious package could read the key from the environment.
 
-What an attacker could do with your key:
+#### Method 2: OAuth with Auto-Nuke (More Secure)
+
+Authenticate once inside the container, and credentials are automatically protected:
+
+```bash
+make up
+make shell
+claude  # First time: complete OAuth manually (copy URL, paste code)
+        # Credential is saved and automatically protected
+```
+
+**How it works:** The `claude` command is wrapped by a security script that:
+1. On first run: you complete OAuth manually, credential is saved + backed up
+2. On subsequent runs: credential is restored, then **deleted the instant Claude reads it**
+3. Claude continues from memory; `npm install` finds no credential file
+
+The credential persists in a Docker volume (survives container restarts) but is only exposed for milliseconds during Claude startup.
+
+#### What an attacker could do with your credentials
+
 - Run up your API bill
 - Exhaust your rate limits
 - Use it for abusive content (potentially flagging your account)
@@ -52,20 +81,24 @@ What they **cannot** do:
 - Access your files (the key only grants API access)
 - Push to your git repos (no git credentials in container)
 
-**To eliminate this risk**, use a two-phase workflow:
+#### Maximum Security: Two-Phase Workflow
+
+For maximum protection, never have credentials present while running untrusted code:
+
 ```bash
-# Phase 1: Install packages WITHOUT the API key
+# Phase 1: Install packages WITHOUT credentials
+unset ANTHROPIC_API_KEY
 make up && make shell
 npm install some-package
 exit
 
-# Phase 2: Restart WITH the key for Claude work
-export ANTHROPIC_API_KEY=sk-ant-...
+# Phase 2: Restart WITH credentials for Claude work
+export ANTHROPIC_API_KEY=sk-ant-...  # or use CLAUDE_AUTH_FILE
 make up && make shell
 claude
 ```
 
-This ensures untrusted install scripts never run while your API key is present.
+This ensures untrusted install scripts never run while any credentials are present.
 
 ---
 

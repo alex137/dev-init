@@ -33,14 +33,16 @@ fi
 # Fix permissions on .claude volume mount (created by docker-compose)
 if [ -d /home/user/.claude ]; then
     chown -R user:user /home/user/.claude
-
-    # SECURITY: Remove any credential files to prevent exposure to untrusted packages
-    # Users should authenticate via ANTHROPIC_API_KEY environment variable instead
-    rm -f /home/user/.claude/credentials.json 2>/dev/null
-    rm -f /home/user/.claude/.credentials 2>/dev/null
-    rm -f /home/user/.claude/auth.json 2>/dev/null
-    rm -f /home/user/.claude/api_key* 2>/dev/null
 fi
+
+# Fix permissions on .config/claude-code volume mount
+if [ -d /home/user/.config/claude-code ]; then
+    chown -R user:user /home/user/.config/claude-code
+fi
+
+# NOTE: Credentials are protected by the claude-secure wrapper, which nukes them
+# immediately after Claude reads them. This allows OAuth credentials to persist
+# in the volume while preventing malicious packages from accessing them.
 
 # Ensure npm global directory exists and is configured
 mkdir -p /home/user/.npm-global
