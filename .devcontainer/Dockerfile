@@ -1,4 +1,4 @@
-ls # syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1
 
 # STAGE 1: Haskell & Clash Builder
 FROM mcr.microsoft.com/devcontainers/base:trixie AS haskell-builder
