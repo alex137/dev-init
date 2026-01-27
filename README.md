@@ -27,6 +27,34 @@ Since credentials aren't mounted, git push/pull won't work inside the container.
 
 This gives you a **forced review checkpoint** - nothing leaves your machine without you seeing it first.
 
+### Claude API Credentials
+
+Claude Code settings and history persist between sessions, but **credentials are automatically deleted** on container startup. This prevents malicious packages from stealing your API key.
+
+To authenticate, pass your API key as an environment variable (never written to disk):
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+make up
+make shell
+claude  # Works immediately, no login needed
+```
+
+**Security tradeoff:** The API key is in the container's environment, so code running during that session *could* access it via `process.env`. However:
+- It's not persisted to disk (deleted on every startup)
+- If you're worried, don't set the key when running untrusted installs:
+  ```bash
+  # Install packages WITHOUT the API key set
+  make up && make shell
+  npm install some-package
+  exit
+
+  # Then restart WITH the key for Claude work
+  export ANTHROPIC_API_KEY=sk-ant-...
+  make up && make shell
+  claude
+  ```
+
 ---
 
 ## 🏗️ The "Base Image" Philosophy
