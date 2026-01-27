@@ -51,4 +51,22 @@ if ! grep -q 'npm-global' /home/user/.bashrc 2>/dev/null; then
     chown user:user /home/user/.bashrc
 fi
 
+# Fix permissions on .config/claude-code volume mount
+if [ -d /home/user/.config/claude-code ]; then
+    chown -R user:user /home/user/.config/claude-code
+fi
+
+# NOTE: Credentials are protected by the claude-secure wrapper, which nukes them
+# immediately after Claude reads them. This allows OAuth credentials to persist
+# in the volume while preventing malicious packages from accessing them.
+
+# Ensure npm global directory exists and is configured
+mkdir -p /home/user/.npm-global
+chown -R user:user /home/user/.npm-global
+# Add npm global bin to PATH if not already present
+if ! grep -q 'npm-global' /home/user/.bashrc 2>/dev/null; then
+    echo 'export PATH="/home/user/.npm-global/bin:$PATH"' >> /home/user/.bashrc
+    chown user:user /home/user/.bashrc
+fi
+
 exec "$@"

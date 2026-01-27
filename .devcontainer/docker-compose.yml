@@ -7,6 +7,7 @@ services:
     volumes:
       - ..:/workspaces/repo
       - claude_config:/home/user/.claude
+      - claude_code_config:/home/user/.config/claude-code
     ports:
       # Maps the unique port from .env to the container's SSH port
       - "${HOST_PORT_SSH}:22"
@@ -20,4 +21,6 @@ services:
 
 volumes:
   claude_config:
+    driver: local
+  claude_code_config:
     driver: local
