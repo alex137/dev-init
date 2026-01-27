@@ -40,20 +40,32 @@ make shell
 claude  # Works immediately, no login needed
 ```
 
-**Security tradeoff:** The API key is in the container's environment, so code running during that session *could* access it via `process.env`. However:
-- It's not persisted to disk (deleted on every startup)
-- If you're worried, don't set the key when running untrusted installs:
-  ```bash
-  # Install packages WITHOUT the API key set
-  make up && make shell
-  npm install some-package
-  exit
+**Remaining vulnerability:** If you set `ANTHROPIC_API_KEY` and then run `npm install` (or pip, cargo, etc.), a malicious package could read the key from the environment and exfiltrate it.
 
-  # Then restart WITH the key for Claude work
-  export ANTHROPIC_API_KEY=sk-ant-...
-  make up && make shell
-  claude
-  ```
+What an attacker could do with your key:
+- Run up your API bill
+- Exhaust your rate limits
+- Use it for abusive content (potentially flagging your account)
+
+What they **cannot** do:
+- Read your previous Claude conversations (not stored server-side)
+- Access your files (the key only grants API access)
+- Push to your git repos (no git credentials in container)
+
+**To eliminate this risk**, use a two-phase workflow:
+```bash
+# Phase 1: Install packages WITHOUT the API key
+make up && make shell
+npm install some-package
+exit
+
+# Phase 2: Restart WITH the key for Claude work
+export ANTHROPIC_API_KEY=sk-ant-...
+make up && make shell
+claude
+```
+
+This ensures untrusted install scripts never run while your API key is present.
 
 ---
 
