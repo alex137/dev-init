@@ -35,4 +35,13 @@ if [ -d /home/user/.claude ]; then
     chown -R user:user /home/user/.claude
 fi
 
+# Ensure npm global directory exists and is configured
+mkdir -p /home/user/.npm-global
+chown -R user:user /home/user/.npm-global
+# Add npm global bin to PATH if not already present
+if ! grep -q 'npm-global' /home/user/.bashrc 2>/dev/null; then
+    echo 'export PATH="/home/user/.npm-global/bin:$PATH"' >> /home/user/.bashrc
+    chown user:user /home/user/.bashrc
+fi
+
 exec "$@"
