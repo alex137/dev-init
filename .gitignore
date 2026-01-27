@@ -4,6 +4,9 @@
 # Editor-generated files
 .zed/tasks.json
 
+# Claude Code local settings (user/session-specific)
+.claude/
+
 # Temporary files
 Makefile.new
 

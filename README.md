@@ -60,8 +60,10 @@ make -f ../dev-init/Makefile dev-init
 
 | Command | Action |
 | --- | --- |
-| `make up` | Starts your project using the Master Image. |
-| `make test` | **Auto-detects** language (Rust/Elixir/Kotlin) and runs tests. |
+| `make up` | Starts your project container in the background. |
+| `make shell` | Opens a terminal inside the running container. |
+| `make down` | Stops and removes the container. |
+| `make fresh` | Resets the container (removes and restarts). |
 | `make setup-zed` | Refreshes your editor UI from the current Makefile. |
 
 ### 2. The "Command Center" (Zed)
@@ -137,9 +139,3 @@ RUN apt-get install -y some-special-tool
 * **"Image dev-env:latest not found":** You haven't run `make build-master` in the `dev-init` folder yet.
 * **"Permission Denied":** If files are owned by root, run `sudo chown -R $USER:$USER .` on your host.
 * **Zed connection fails:** Run `make status` to ensure the SSH server inside the container is reachable.
-
-
-## TODO
-gitignore in the other eports
-ignore .env and projects.reg here
-tasks.json
