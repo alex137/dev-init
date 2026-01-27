@@ -9,6 +9,7 @@
 
 ### Why This Matters
 
+When you run `npm install` or `pip install`, you're executing code written by strangers. In a normal setup, that code has access to:
 **Claude Code itself warns you about these risks.** When you start a session, you'll see:
 
 > *"Claude can make mistakes. You should always review Claude's responses, especially when running code."*
@@ -39,6 +40,7 @@ This gives you a **forced review checkpoint** - nothing leaves your machine with
 
 Claude Code settings and history persist between sessions, but **credentials are automatically deleted** on container startup. This prevents malicious packages from stealing your API key.
 
+To authenticate, pass your API key as an environment variable (never written to disk):
 #### Method 1: API Key (Simpler)
 
 Pass your API key as an environment variable (never written to disk):
@@ -50,6 +52,9 @@ make shell
 claude  # Works immediately, no login needed
 ```
 
+**Remaining vulnerability:** If you set `ANTHROPIC_API_KEY` and then run `npm install` (or pip, cargo, etc.), a malicious package could read the key from the environment and exfiltrate it.
+
+What an attacker could do with your key:
 **Vulnerability:** If you set `ANTHROPIC_API_KEY` and then run `npm install`, a malicious package could read the key from the environment.
 
 #### Method 2: OAuth with Auto-Nuke (More Secure)
@@ -81,6 +86,9 @@ What they **cannot** do:
 - Access your files (the key only grants API access)
 - Push to your git repos (no git credentials in container)
 
+**To eliminate this risk**, use a two-phase workflow:
+```bash
+# Phase 1: Install packages WITHOUT the API key
 #### Maximum Security: Two-Phase Workflow
 
 For maximum protection, never have credentials present while running untrusted code:

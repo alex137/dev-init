@@ -33,6 +33,22 @@ fi
 # Fix permissions on .claude volume mount (created by docker-compose)
 if [ -d /home/user/.claude ]; then
     chown -R user:user /home/user/.claude
+
+    # SECURITY: Remove any credential files to prevent exposure to untrusted packages
+    # Users should authenticate via ANTHROPIC_API_KEY environment variable instead
+    rm -f /home/user/.claude/credentials.json 2>/dev/null
+    rm -f /home/user/.claude/.credentials 2>/dev/null
+    rm -f /home/user/.claude/auth.json 2>/dev/null
+    rm -f /home/user/.claude/api_key* 2>/dev/null
+fi
+
+# Ensure npm global directory exists and is configured
+mkdir -p /home/user/.npm-global
+chown -R user:user /home/user/.npm-global
+# Add npm global bin to PATH if not already present
+if ! grep -q 'npm-global' /home/user/.bashrc 2>/dev/null; then
+    echo 'export PATH="/home/user/.npm-global/bin:$PATH"' >> /home/user/.bashrc
+    chown user:user /home/user/.bashrc
 fi
 
 # Fix permissions on .config/claude-code volume mount
