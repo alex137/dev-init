@@ -131,9 +131,29 @@ make -f ../dev-init/Makefile dev-init
 | `make shell` | Opens a terminal inside the running container. |
 | `make down` | Stops and removes the container. |
 | `make fresh` | Resets the container (removes and restarts). |
+| `make build-master` | Rebuilds the master image (run from dev-init folder). |
 | `make setup-zed` | Refreshes your editor UI from the current Makefile. |
 
-### 2. The "Command Center" (Zed)
+### 2. Rebuilding the Master Image
+
+When you update dev-init (pull new changes, or modify the Dockerfile/entrypoint), you need to rebuild the master image for changes to take effect:
+
+```bash
+cd ~/code/dev-init      # Go to dev-init folder
+git pull                # Get latest changes
+make build-master       # Rebuild dev-env:latest
+```
+
+Then restart your project containers to use the new image:
+
+```bash
+cd ~/code/your-project
+make fresh              # Removes old container, starts with new image
+```
+
+**Note:** Child projects inherit from `dev-env:latest`. They won't see Dockerfile/entrypoint changes until you rebuild the master.
+
+### 3. The "Command Center" (Zed)
 
 Press `Cmd+Shift+P` and type **"task: spawn"**. You will see your project tasks, plus:
 
