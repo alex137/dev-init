@@ -41,6 +41,7 @@ RUN apt-get update && apt-get install -y \
     curl git xz-utils openssh-server gnupg build-essential \
     python3 python3-pip clang llvm gdb nasm cmake unzip zip \
     verilator yosys ghdl iverilog gtkwave graphviz \
+    inotify-tools pandoc \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Copy Haskell/Clash from the builder stage
@@ -63,8 +64,15 @@ RUN apt-get update && apt-get install -y elixir erlang-dev && \
 
 # 4. Node.js & Claude (Likely to change more often)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs && npm install -g @anthropic-ai/claude-code
+    && apt-get install -y nodejs \
+    && npm install -g @anthropic-ai/claude-code @marp-team/marp-cli
 
+# 4a. Claude secure wrapper - provides credentials only during auth, then nukes them
+COPY .devcontainer/claude-secure.sh /usr/local/bin/claude-secure
+RUN chmod +x /usr/local/bin/claude-secure && \
+    CLAUDE_PATH=$(which claude) && \
+    mv "$CLAUDE_PATH" "${CLAUDE_PATH}.real" && \
+    ln -sf /usr/local/bin/claude-secure "$CLAUDE_PATH"
 
 # 5. Create Generic Non-Root User (Dynamic - Bottom)
 ARG USERNAME=user

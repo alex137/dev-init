@@ -15,3 +15,11 @@ projects.reg
 
 # Persistent user dotfiles (created at runtime)
 user/
+
+# npm artifacts
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# Obsidian (editor metadata)
+.obsidian/
