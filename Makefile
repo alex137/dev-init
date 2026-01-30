@@ -5,7 +5,7 @@ PROJ_NAME = $(shell basename $$(pwd))
 # Load variables from the generated .env if it exists
 -include .devcontainer/.env
 
-.PHONY: build-master build-haskell test-master update-base dev-init setup-zed up down shell list
+.PHONY: build-master build-haskell test-master update-base dev-init setup-zed up down shell restart fresh list
 
 # --- MASTER RULES (Run in dev-init) ---
 
@@ -91,6 +91,10 @@ shell: # Enter the container terminal as 'user' in the repo directory
 			$(PROJ_NAME)-app bash; \
 	fi
 
-fresh: # Reset docker container
+fresh: # Reset docker container (rebuilds image, may lose Claude auth)
 	@docker rm -f $(PROJ_NAME)-app
 	@$(MAKE) up
+
+restart: # Restart container without rebuilding (preserves Claude auth)
+	@docker restart $(PROJ_NAME)-app
+	@echo "✅ Container restarted."
