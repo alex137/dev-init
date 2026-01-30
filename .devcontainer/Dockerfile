@@ -33,7 +33,7 @@ RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # 4. Elixir & Gleam
-RUN apt-get update && apt-get install -y elixir erlang-dev && \
+RUN apt-get clean && apt-get update && apt-get install -y elixir erlang-dev && \
     RAW_ARCH=$(uname -m) && \
     ARCH_MAP=$([ "$RAW_ARCH" = "aarch64" ] && echo "aarch64" || echo "x86_64") && \
     GLEAM_URL="https://github.com/gleam-lang/gleam/releases/download/v1.8.1/gleam-v1.8.1-${ARCH_MAP}-unknown-linux-musl.tar.gz" && \
@@ -85,7 +85,7 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation fonts-liberation2 \
     fonts-freefont-ttf fonts-roboto fonts-lato fonts-open-sans \
     fonts-firacode fonts-hack fonts-inconsolata fonts-cascadia-code \
-    fonts-ubuntu fonts-font-awesome \
+    fonts-font-awesome \
     && rm -rf /var/lib/apt/lists/*
 
 # Extra npm packages - add new ones here
