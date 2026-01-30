@@ -4,9 +4,25 @@ PROJ_NAME = $(shell basename $$(pwd))
 # Load variables from the generated .env if it exists
 -include .devcontainer/.env
 
-.PHONY: build-master test-master dev-init setup-zed up down shell list
+.PHONY: build-master test-master update-base dev-init setup-zed up down shell list
 
 # --- MASTER RULES (Run in dev-init) ---
+
+update-base: # Update pinned base image digest (triggers Haskell rebuild on next build)
+	@echo "🔍 Fetching latest base image digest..."
+	@NEW_DIGEST=$$(curl -sI "https://mcr.microsoft.com/v2/devcontainers/base/manifests/trixie" \
+		-H "Accept: application/vnd.oci.image.index.v1+json" | grep -i docker-content-digest | awk '{print $$2}' | tr -d '\r'); \
+	if [ -z "$$NEW_DIGEST" ]; then \
+		echo "❌ Failed to fetch digest"; exit 1; \
+	fi; \
+	OLD_DIGEST=$$(grep "^ARG BASE_IMAGE=" .devcontainer/Dockerfile | sed 's/.*@//'); \
+	if [ "$$OLD_DIGEST" = "$$NEW_DIGEST" ]; then \
+		echo "✅ Already up to date: $$NEW_DIGEST"; \
+	else \
+		sed -i.bak "s|@sha256:[a-f0-9]*|@$$NEW_DIGEST|" .devcontainer/Dockerfile && rm .devcontainer/Dockerfile.bak; \
+		echo "✅ Updated: $$OLD_DIGEST → $$NEW_DIGEST"; \
+		echo "⚠️  Run 'make build-master' to rebuild (will rebuild Haskell)"; \
+	fi
 
 build-master: # Build the Global Base Image from Dockerfile
 	@echo "🏗️  Building master image: $(MASTER_IMAGE)..."
