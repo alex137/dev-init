@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     python3 python3-pip clang llvm gdb nasm cmake unzip zip \
     verilator yosys ghdl iverilog gtkwave graphviz \
     inotify-tools pandoc texlive-full \
+    fonts-noto-core fonts-noto-mono \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Copy Haskell/Clash from pre-built image (run 'make build-haskell' first)
