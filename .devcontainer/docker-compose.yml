@@ -17,6 +17,9 @@ services:
       # Claude API key - passed at runtime, never written to disk
       # Set this in your shell before 'make up': export ANTHROPIC_API_KEY=sk-...
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # Cloudflare API token for wrangler - passed at runtime
+      # Set this in your shell before 'make up': export CLOUDFLARE_API_TOKEN=xxx
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
     tty: true
 
 volumes:
