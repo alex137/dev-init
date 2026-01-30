@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+#
+# Haskell & Clash toolchain - built separately to avoid slow rebuilds
+# Run: make build-haskell (only needed when updating GHC/Clash versions)
+
+FROM mcr.microsoft.com/devcontainers/base:trixie@sha256:0fea8c4b6512d8bb1a1419efb9cd0e6585a7a91d76c1cd44494a27849ef730fe
+
+USER root
+RUN apt-get update && apt-get install -y \
+    curl \
+    binutils-gold \
+    xz-utils \
+    build-essential \
+    libtinfo-dev \
+    libncurses-dev \
+    && ln -sf /usr/bin/ld.gold /usr/bin/ld \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV GHCUP_INSTALL_SKIP_MSYS=1
+RUN curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | \
+    BOOTSTRAP_HASKELL_NONINTERACTIVE=1 \
+    BOOTSTRAP_HASKELL_GHC_VERSION=9.6.4 \
+    BOOTSTRAP_HASKELL_CABAL_VERSION=3.10.2.1 \
+    sh
+
+ENV PATH="/root/.ghcup/bin:/root/.cabal/bin:${PATH}"
+
+RUN --mount=type=cache,target=/root/.cabal/packages \
+    cabal update && \
+    cabal install --lib clash-prelude --overwrite-policy=always && \
+    cabal install clash-ghc --overwrite-policy=always --jobs=1 && \
+    rm -rf /root/.ghcup/tmp/* && \
+    rm -rf /root/.ghcup/logs/*

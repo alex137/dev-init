@@ -1,47 +1,13 @@
 # syntax=docker/dockerfile:1
+#
+# Main dev environment - references pre-built Haskell image
+# Run: make build-master (fast, uses cached Haskell)
+# To rebuild Haskell: make build-haskell (slow, only when needed)
 
-# Base image pinned to prevent unnecessary rebuilds when upstream updates
-# To update: get new digest from mcr.microsoft.com/v2/devcontainers/base/manifests/trixie
-ARG BASE_IMAGE=mcr.microsoft.com/devcontainers/base:trixie@sha256:0fea8c4b6512d8bb1a1419efb9cd0e6585a7a91d76c1cd44494a27849ef730fe
-
-# STAGE 1: Haskell & Clash Builder
-FROM ${BASE_IMAGE} AS haskell-builder
-USER root
-RUN apt-get update && apt-get install -y \
-    curl \
-    binutils-gold \
-    xz-utils \
-    build-essential \
-    libtinfo-dev \
-    libncurses-dev \
-    && ln -sf /usr/bin/ld.gold /usr/bin/ld \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV GHCUP_INSTALL_SKIP_MSYS=1
-RUN curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | \
-    BOOTSTRAP_HASKELL_NONINTERACTIVE=1 \
-    BOOTSTRAP_HASKELL_GHC_VERSION=9.6.4 \
-    BOOTSTRAP_HASKELL_CABAL_VERSION=3.10.2.1 \
-    sh
-
-ENV PATH="/root/.ghcup/bin:/root/.cabal/bin:${PATH}"
-# Using a cache mount to speed up subsequent Haskell package downloads
-
-# Inside Stage 1 (haskell-builder)
-RUN --mount=type=cache,target=/root/.cabal/packages \
-    cabal update && \
-    cabal install --lib clash-prelude --overwrite-policy=always && \
-    cabal install clash-ghc --overwrite-policy=always --jobs=1 && \
-    # CRITICAL: Clean up temporary GHCup files before ending the layer
-    rm -rf /root/.ghcup/tmp/* && \
-    rm -rf /root/.ghcup/logs/*
-
-# STAGE 2: Final Dev Environment
-ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+FROM mcr.microsoft.com/devcontainers/base:trixie@sha256:0fea8c4b6512d8bb1a1419efb9cd0e6585a7a91d76c1cd44494a27849ef730fe
 USER root
 
-# 1. System Essentials (Stable layers first)
+# 1. System Essentials
 RUN apt-get update && apt-get install -y \
     curl git xz-utils openssh-server gnupg build-essential \
     python3 python3-pip clang llvm gdb nasm cmake unzip zip \
@@ -49,15 +15,14 @@ RUN apt-get update && apt-get install -y \
     inotify-tools pandoc \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Copy Haskell/Clash from the builder stage
-# This is "Shielded" - it only updates if Stage 1 changes
-COPY --from=haskell-builder /root/.ghcup /root/.ghcup
-COPY --from=haskell-builder /root/.cabal /root/.cabal
-COPY --from=haskell-builder /usr/bin/ld.gold /usr/bin/ld.gold
+# 2. Copy Haskell/Clash from pre-built image (run 'make build-haskell' first)
+COPY --from=dev-env-haskell:latest /root/.ghcup /root/.ghcup
+COPY --from=dev-env-haskell:latest /root/.cabal /root/.cabal
+COPY --from=dev-env-haskell:latest /usr/bin/ld.gold /usr/bin/ld.gold
 RUN ln -sf /usr/bin/ld.gold /usr/bin/ld
 ENV PATH="/root/.ghcup/bin:/root/.cabal/bin:${PATH}"
 
-# 3. Rust, Elixir, & Gleam (Stable binaries)
+# 3. Rust, Elixir, & Gleam
 RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN apt-get update && apt-get install -y elixir erlang-dev && \
@@ -67,19 +32,19 @@ RUN apt-get update && apt-get install -y elixir erlang-dev && \
     curl -fsSL "$GLEAM_URL" | tar -xzC /usr/local/bin && \
     chmod +x /usr/local/bin/gleam && rm -rf /var/lib/apt/lists/*
 
-# 4. Node.js & Claude (Likely to change more often)
+# 4. Node.js & Claude
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && npm install -g @anthropic-ai/claude-code @marp-team/marp-cli
 
-# 4a. Claude secure wrapper - provides credentials only during auth, then nukes them
+# 4a. Claude secure wrapper - nukes credentials after auth
 COPY .devcontainer/claude-secure.sh /usr/local/bin/claude-secure
 RUN chmod +x /usr/local/bin/claude-secure && \
     CLAUDE_PATH=$(which claude) && \
     mv "$CLAUDE_PATH" "${CLAUDE_PATH}.real" && \
     ln -sf /usr/local/bin/claude-secure "$CLAUDE_PATH"
 
-# 5. Create Generic Non-Root User (Dynamic - Bottom)
+# 5. Create Non-Root User
 ARG USERNAME=user
 RUN if getent group 1000; then groupmod -n $USERNAME $(getent group 1000 | cut -d: -f1); else groupadd --gid 1000 $USERNAME; fi && \
     if getent passwd 1000; then usermod -l $USERNAME -m -d /home/$USERNAME $(getent passwd 1000 | cut -d: -f1); else useradd --uid 1000 --gid 1000 -m $USERNAME; fi && \
@@ -88,13 +53,13 @@ RUN if getent group 1000; then groupmod -n $USERNAME $(getent group 1000 | cut -
     echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME && \
     rm -rf /var/lib/apt/lists/*
 
-# 6. Configure npm for user-writable global installs (no sudo needed)
+# 6. Configure npm for user-writable global installs
 RUN mkdir -p /home/$USERNAME/.npm-global && \
     chown -R $USERNAME:$USERNAME /home/$USERNAME/.npm-global && \
     su - $USERNAME -c "npm config set prefix '/home/$USERNAME/.npm-global'"
 ENV PATH="/home/user/.npm-global/bin:${PATH}"
 
-# 7. SSH Config - Key-based auth only (secure for remote access)
+# 7. SSH Config - Key-based auth only
 RUN mkdir -p /var/run/sshd && passwd -l root && \
     sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
     sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config && \
@@ -102,25 +67,16 @@ RUN mkdir -p /var/run/sshd && passwd -l root && \
     sed -i 's/^#\?ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config && \
     mkdir -p /home/$USERNAME/.ssh && chmod 700 /home/$USERNAME/.ssh && chown $USERNAME:$USERNAME /home/$USERNAME/.ssh
 
-
-
-# Set the starting directory for all shells and tools
 WORKDIR /workspaces/repo
-
-# Ensure the 'user' owns this directory to avoid permission issues
 RUN chown -R user:user /workspaces/repo
 
-
 USER root
-
-# Ensure the sshd directory exists and keys are generated
 RUN mkdir -p /var/run/sshd && \
     ssh-keygen -A && \
     chmod 600 /etc/ssh/ssh_host_*_key
 
 EXPOSE 22
 
-# 7. Entrypoint for persistent home directory
 COPY .devcontainer/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

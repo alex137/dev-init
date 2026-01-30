@@ -1,30 +1,37 @@
 MASTER_IMAGE = dev-env:latest
+HASKELL_IMAGE = dev-env-haskell:latest
 PROJ_NAME = $(shell basename $$(pwd))
 
 # Load variables from the generated .env if it exists
 -include .devcontainer/.env
 
-.PHONY: build-master test-master update-base dev-init setup-zed up down shell list
+.PHONY: build-master build-haskell test-master update-base dev-init setup-zed up down shell list
 
 # --- MASTER RULES (Run in dev-init) ---
 
-update-base: # Update pinned base image digest (triggers Haskell rebuild on next build)
+build-haskell: # Build Haskell/Clash image (slow, only run when updating GHC/Clash)
+	@echo "🏗️  Building Haskell image: $(HASKELL_IMAGE)..."
+	@echo "⏳ This takes 10-20 minutes. Only needed when updating GHC/Clash versions."
+	@docker build -t $(HASKELL_IMAGE) -f .devcontainer/Dockerfile.haskell .
+	@echo "✅ Haskell image ready. Now run 'make build-master'."
+
+update-base: # Update pinned base image digest (run build-haskell after)
 	@echo "🔍 Fetching latest base image digest..."
 	@NEW_DIGEST=$$(curl -sI "https://mcr.microsoft.com/v2/devcontainers/base/manifests/trixie" \
 		-H "Accept: application/vnd.oci.image.index.v1+json" | grep -i docker-content-digest | awk '{print $$2}' | tr -d '\r'); \
 	if [ -z "$$NEW_DIGEST" ]; then \
 		echo "❌ Failed to fetch digest"; exit 1; \
 	fi; \
-	OLD_DIGEST=$$(grep "^ARG BASE_IMAGE=" .devcontainer/Dockerfile | sed 's/.*@//'); \
+	OLD_DIGEST=$$(grep -m1 "@sha256:" .devcontainer/Dockerfile | sed 's/.*@//' | sed 's/ .*//' ); \
 	if [ "$$OLD_DIGEST" = "$$NEW_DIGEST" ]; then \
 		echo "✅ Already up to date: $$NEW_DIGEST"; \
 	else \
-		sed -i.bak "s|@sha256:[a-f0-9]*|@$$NEW_DIGEST|" .devcontainer/Dockerfile && rm .devcontainer/Dockerfile.bak; \
+		sed -i.bak "s|@sha256:[a-f0-9]*|@$$NEW_DIGEST|g" .devcontainer/Dockerfile .devcontainer/Dockerfile.haskell && rm -f .devcontainer/*.bak; \
 		echo "✅ Updated: $$OLD_DIGEST → $$NEW_DIGEST"; \
-		echo "⚠️  Run 'make build-master' to rebuild (will rebuild Haskell)"; \
+		echo "⚠️  Run 'make build-haskell' then 'make build-master'"; \
 	fi
 
-build-master: # Build the Global Base Image from Dockerfile
+build-master: # Build the Global Base Image (fast, requires build-haskell first)
 	@echo "🏗️  Building master image: $(MASTER_IMAGE)..."
 	@docker build -t $(MASTER_IMAGE) -f .devcontainer/Dockerfile .
 	@$(MAKE) test-master
