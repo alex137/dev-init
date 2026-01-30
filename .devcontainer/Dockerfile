@@ -1,36 +1,38 @@
 # syntax=docker/dockerfile:1
 #
 # Main dev environment - references pre-built Haskell image
-# Run: make build-master (fast, uses cached Haskell)
+# Run: make build-master (fast, uses cached layers)
 # To rebuild Haskell: make build-haskell (slow, only when needed)
+#
+# STRUCTURE: Stable layers first, extras at the end
+# Adding packages to EXTRAS section won't invalidate earlier layers
 
 FROM mcr.microsoft.com/devcontainers/base:trixie@sha256:0fea8c4b6512d8bb1a1419efb9cd0e6585a7a91d76c1cd44494a27849ef730fe
 USER root
 
-# 1. System Essentials
+# ============================================================
+# STABLE LAYERS - Rarely change, cached long-term
+# ============================================================
+
+# 1. Core System Packages (change rarely)
 RUN apt-get update && apt-get install -y \
     curl git xz-utils openssh-server gnupg build-essential \
     python3 python3-pip clang llvm gdb nasm cmake unzip zip \
-    verilator yosys ghdl iverilog gtkwave graphviz \
-    inotify-tools pandoc texlive-full \
-    fonts-noto-core fonts-noto-mono fonts-noto-cjk \
-    fonts-dejavu-core fonts-dejavu-extra \
-    fonts-liberation fonts-liberation2 \
-    fonts-freefont-ttf fonts-roboto fonts-lato fonts-open-sans \
-    fonts-firacode fonts-hack fonts-inconsolata fonts-cascadia-code \
-    fonts-ubuntu fonts-font-awesome \
+    verilator yosys ghdl iverilog gtkwave graphviz inotify-tools \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Copy Haskell/Clash from pre-built image (run 'make build-haskell' first)
+# 2. Haskell/Clash from pre-built image
 COPY --from=dev-env-haskell:latest /root/.ghcup /root/.ghcup
 COPY --from=dev-env-haskell:latest /root/.cabal /root/.cabal
 COPY --from=dev-env-haskell:latest /usr/bin/ld.gold /usr/bin/ld.gold
 RUN ln -sf /usr/bin/ld.gold /usr/bin/ld
 ENV PATH="/root/.ghcup/bin:/root/.cabal/bin:${PATH}"
 
-# 3. Rust, Elixir, & Gleam
+# 3. Rust
 RUN curl -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
+
+# 4. Elixir & Gleam
 RUN apt-get update && apt-get install -y elixir erlang-dev && \
     RAW_ARCH=$(uname -m) && \
     ARCH_MAP=$([ "$RAW_ARCH" = "aarch64" ] && echo "aarch64" || echo "x86_64") && \
@@ -38,19 +40,11 @@ RUN apt-get update && apt-get install -y elixir erlang-dev && \
     curl -fsSL "$GLEAM_URL" | tar -xzC /usr/local/bin && \
     chmod +x /usr/local/bin/gleam && rm -rf /var/lib/apt/lists/*
 
-# 4. Node.js & Claude
+# 5. Node.js (base install only)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && npm install -g @anthropic-ai/claude-code @marp-team/marp-cli
+    && apt-get install -y nodejs
 
-# 4a. Claude secure wrapper - nukes credentials after auth
-COPY .devcontainer/claude-secure.sh /usr/local/bin/claude-secure
-RUN chmod +x /usr/local/bin/claude-secure && \
-    CLAUDE_PATH=$(which claude) && \
-    mv "$CLAUDE_PATH" "${CLAUDE_PATH}.real" && \
-    ln -sf /usr/local/bin/claude-secure "$CLAUDE_PATH"
-
-# 5. Create Non-Root User
+# 6. User Setup
 ARG USERNAME=user
 RUN if getent group 1000; then groupmod -n $USERNAME $(getent group 1000 | cut -d: -f1); else groupadd --gid 1000 $USERNAME; fi && \
     if getent passwd 1000; then usermod -l $USERNAME -m -d /home/$USERNAME $(getent passwd 1000 | cut -d: -f1); else useradd --uid 1000 --gid 1000 -m $USERNAME; fi && \
@@ -59,13 +53,12 @@ RUN if getent group 1000; then groupmod -n $USERNAME $(getent group 1000 | cut -
     echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME && \
     rm -rf /var/lib/apt/lists/*
 
-# 6. Configure npm for user-writable global installs
 RUN mkdir -p /home/$USERNAME/.npm-global && \
     chown -R $USERNAME:$USERNAME /home/$USERNAME/.npm-global && \
     su - $USERNAME -c "npm config set prefix '/home/$USERNAME/.npm-global'"
 ENV PATH="/home/user/.npm-global/bin:${PATH}"
 
-# 7. SSH Config - Key-based auth only
+# 7. SSH Config
 RUN mkdir -p /var/run/sshd && passwd -l root && \
     sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
     sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config && \
@@ -76,13 +69,43 @@ RUN mkdir -p /var/run/sshd && passwd -l root && \
 WORKDIR /workspaces/repo
 RUN chown -R user:user /workspaces/repo
 
-USER root
 RUN mkdir -p /var/run/sshd && \
     ssh-keygen -A && \
     chmod 600 /etc/ssh/ssh_host_*_key
 
-EXPOSE 22
+# ============================================================
+# EXTRAS - Add new packages here (fast rebuilds)
+# ============================================================
 
+# Extra apt packages - add new ones here
+RUN apt-get update && apt-get install -y \
+    pandoc texlive-full \
+    fonts-noto-core fonts-noto-mono fonts-noto-cjk \
+    fonts-dejavu-core fonts-dejavu-extra \
+    fonts-liberation fonts-liberation2 \
+    fonts-freefont-ttf fonts-roboto fonts-lato fonts-open-sans \
+    fonts-firacode fonts-hack fonts-inconsolata fonts-cascadia-code \
+    fonts-ubuntu fonts-font-awesome \
+    && rm -rf /var/lib/apt/lists/*
+
+# Extra npm packages - add new ones here
+RUN npm install -g \
+    @anthropic-ai/claude-code \
+    @marp-team/marp-cli \
+    wrangler
+
+# Claude secure wrapper - must come after claude-code install
+COPY .devcontainer/claude-secure.sh /usr/local/bin/claude-secure
+RUN chmod +x /usr/local/bin/claude-secure && \
+    CLAUDE_PATH=$(which claude) && \
+    mv "$CLAUDE_PATH" "${CLAUDE_PATH}.real" && \
+    ln -sf /usr/local/bin/claude-secure "$CLAUDE_PATH"
+
+# ============================================================
+# ENTRYPOINT - Must be last
+# ============================================================
+
+EXPOSE 22
 COPY .devcontainer/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
