@@ -13,9 +13,9 @@
 
 set -e
 
-CONFIG_DIR="/home/user/.config/claude-code"
-AUTH_FILE="$CONFIG_DIR/auth.json"
-BACKUP_FILE="$CONFIG_DIR/.auth.json.bak"
+CONFIG_DIR="/home/user/.claude"
+AUTH_FILE="$CONFIG_DIR/.credentials.json"
+BACKUP_FILE="$CONFIG_DIR/.credentials.json.bak"
 
 # Find the real claude binary
 for path in /usr/bin/claude.real /usr/local/bin/claude.real /home/user/.npm-global/bin/claude.real; do
