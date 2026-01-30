@@ -79,7 +79,7 @@ RUN mkdir -p /var/run/sshd && \
 
 # Extra apt packages - add new ones here
 RUN apt-get update && apt-get install -y \
-    pandoc texlive-full \
+    pandoc texlive-latex-extra texlive-fonts-recommended texlive-xetex lmodern \
     fonts-noto-core fonts-noto-mono fonts-noto-cjk \
     fonts-dejavu-core fonts-dejavu-extra \
     fonts-liberation fonts-liberation2 \
