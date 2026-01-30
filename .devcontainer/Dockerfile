@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1
 
+# Base image pinned to prevent unnecessary rebuilds when upstream updates
+# To update: get new digest from mcr.microsoft.com/v2/devcontainers/base/manifests/trixie
+ARG BASE_IMAGE=mcr.microsoft.com/devcontainers/base:trixie@sha256:0fea8c4b6512d8bb1a1419efb9cd0e6585a7a91d76c1cd44494a27849ef730fe
+
 # STAGE 1: Haskell & Clash Builder
-FROM mcr.microsoft.com/devcontainers/base:trixie AS haskell-builder
+FROM ${BASE_IMAGE} AS haskell-builder
 USER root
 RUN apt-get update && apt-get install -y \
     curl \
@@ -33,7 +37,8 @@ RUN --mount=type=cache,target=/root/.cabal/packages \
     rm -rf /root/.ghcup/logs/*
 
 # STAGE 2: Final Dev Environment
-FROM mcr.microsoft.com/devcontainers/base:trixie
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 USER root
 
 # 1. System Essentials (Stable layers first)
