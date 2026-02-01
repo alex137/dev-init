@@ -52,7 +52,7 @@ dev-init: # Initialize current folder with Docker and Zed configs
 	@rm -rf .devcontainer 2>/dev/null || true
 	@ln -sf ../dev-init/.devcontainer .devcontainer
 	@ln -sf ../dev-init/.devcontainer/dev-wrapper.sh ./dev
-	@for entry in .devcontainer dev .env.local .zed/; do \
+	@for entry in .devcontainer dev .env.local .zed/ user/; do \
 		grep -qxF "$$entry" .gitignore 2>/dev/null || echo "$$entry" >> .gitignore; \
 	done
 	@PROJ_NAME=$(PROJ_NAME) bash .devcontainer/gen_tasks.sh
