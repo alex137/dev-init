@@ -79,11 +79,10 @@ down: # Stop and remove the project container
 shell: # Enter the container terminal as 'user' in the repo directory
 	@if [ -f /.dockerenv ]; then \
 		echo "✅ You're already inside the container!"; \
+	elif docker ps --format '{{.Names}}' | grep -q "^$(PROJ_NAME)-app$$"; then \
+		docker exec -it --user user --workdir /workspaces/repo $(PROJ_NAME)-app bash; \
 	else \
-		docker exec -it \
-			--user user \
-			--workdir /workspaces/repo \
-			$(PROJ_NAME)-app bash; \
+		$(MAKE) up && docker exec -it --user user --workdir /workspaces/repo $(PROJ_NAME)-app bash; \
 	fi
 
 fresh: # Reset docker container (rebuilds image, may lose Claude auth)

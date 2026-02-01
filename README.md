@@ -129,8 +129,8 @@ make -f ../dev-init/Makefile dev-init
 | Command | Action |
 | --- | --- |
 | `./dev` | Shows available commands |
+| `./dev shell` | Opens a terminal (auto-starts container if needed) |
 | `./dev up` | Starts your project container in the background |
-| `./dev shell` | Opens a terminal inside the running container |
 | `./dev down` | Stops and removes the container |
 | `./dev restart` | Restarts container (preserves Claude auth) |
 | `./dev fresh` | Resets the container (may lose Claude auth) |
