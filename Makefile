@@ -2,8 +2,8 @@ MASTER_IMAGE = dev-env:latest
 HASKELL_IMAGE = dev-env-haskell:latest
 PROJ_NAME = $(shell basename $$(pwd))
 
-# Load variables from the generated .env if it exists
--include .devcontainer/.env
+# Load variables from .env.local (project-specific config + secrets)
+-include .env.local
 
 .PHONY: build-master build-haskell test-master update-base dev-init setup-zed up down shell restart fresh list
 
@@ -45,28 +45,23 @@ test-master: # Verify toolchain health in a fresh container
 
 dev-init: # Initialize current folder with Docker and Zed configs
 	@echo "🏗️  Initializing project environment..."
-	@mkdir -p .devcontainer
-	@if [ "$(PROJ_NAME)" != "dev-init" ]; then \
-		echo "FROM $(MASTER_IMAGE)" > .devcontainer/Dockerfile; \
-		echo "WORKDIR /workspaces/repo" >> .devcontainer/Dockerfile; \
-		echo "USER root" >> .devcontainer/Dockerfile; \
-		echo "RUN mkdir -p /var/run/sshd && ssh-keygen -A" >> .devcontainer/Dockerfile; \
-		echo "USER root" >> .devcontainer/Dockerfile; \
-		ln -sf ../dev-init/Makefile Makefile 2>/dev/null; \
-		cp ../dev-init/.devcontainer/docker-compose.yml .devcontainer/docker-compose.yml; \
-		echo "✨ Project-specific files created."; \
-	else \
-		echo "🏠 Operating in dev-init root. Skipping self-copy."; \
+	@if [ "$(PROJ_NAME)" = "dev-init" ]; then \
+		echo "🏠 Operating in dev-init root. Run container commands directly: make up, make shell"; \
+		exit 0; \
 	fi
-	@$(MAKE) setup-zed
+	@rm -rf .devcontainer 2>/dev/null || true
+	@ln -sf ../dev-init/.devcontainer .devcontainer
+	@ln -sf ../dev-init/.devcontainer/dev-wrapper.sh ./dev
+	@for entry in .devcontainer dev .env.local .zed/; do \
+		grep -qxF "$$entry" .gitignore 2>/dev/null || echo "$$entry" >> .gitignore; \
+	done
+	@PROJ_NAME=$(PROJ_NAME) bash .devcontainer/gen_tasks.sh
 	@echo "✅ Setup complete for $(PROJ_NAME)."
+	@echo "📋 Container commands: ./dev up, ./dev shell, ./dev down"
+	@echo "🔐 Put secrets in .env.local"
 
 setup-zed: # Register project and generate Zed tasks.json
-	@if [ "$(PROJ_NAME)" = "dev-init" ]; then \
-		PROJ_NAME=$(PROJ_NAME) bash .devcontainer/gen_tasks.sh; \
-	else \
-		PROJ_NAME=$(PROJ_NAME) bash ../dev-init/.devcontainer/gen_tasks.sh; \
-	fi
+	@PROJ_NAME=$(PROJ_NAME) bash .devcontainer/gen_tasks.sh
 
 list: # Show all registered projects and their ports
 	@echo "📋 Registered Projects:"
@@ -75,11 +70,11 @@ list: # Show all registered projects and their ports
 # --- DOCKER COMMANDS (Run from project folder) ---
 
 up: # Start the dev container in the background
-	@docker compose -f .devcontainer/docker-compose.yml up -d --build
+	@docker compose -f .devcontainer/docker-compose.yml --env-file .env.local up -d
 	@echo "🚀 Container is up. Port $(HOST_PORT_SSH) is open for SSH."
 
 down: # Stop and remove the project container
-	@docker compose -f .devcontainer/docker-compose.yml down
+	@docker compose -f .devcontainer/docker-compose.yml --env-file .env.local down
 
 shell: # Enter the container terminal as 'user' in the repo directory
 	@if [ -f /.dockerenv ]; then \

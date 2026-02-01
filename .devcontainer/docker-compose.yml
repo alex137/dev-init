@@ -1,9 +1,7 @@
 services:
   app:
     container_name: ${COMPOSE_PROJECT_NAME}-app
-    build:
-      context: ..
-      dockerfile: .devcontainer/Dockerfile
+    image: dev-env:latest
     volumes:
       - ..:/workspaces/repo
       - claude_config:/home/user/.claude

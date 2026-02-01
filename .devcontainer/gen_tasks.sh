@@ -7,7 +7,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # This assumes the registry is one level up from the .devcontainer folder
 REGISTRY_FILE="$SCRIPT_DIR/../projects.reg"
 PROJ_NAME=$(basename "$(pwd)")
-ENV_FILE=".devcontainer/.env"
+ENV_FILE=".env.local"
 START_PORT=2222
 
 # Ensure registry exists
@@ -54,15 +54,23 @@ OUTPUT_FILE="$OUTPUT_DIR/tasks.json"
 mkdir -p "$OUTPUT_DIR"
 
 echo "[" > "$OUTPUT_FILE"
-awk -F'[:#]' '/^[a-zA-Z0-9_-]+:[[:space:]]*[^#]*#/ {
-    target = $1; label = $3;
-    gsub(/^[[:space:]]+|[[:space:]]+$/, "", target);
-    gsub(/^[[:space:]]+|[[:space:]]+$/, "", label);
-    if (count > 0) printf ",\n";
-    printf "  {\n    \"label\": \"%s\",\n    \"command\": \"make %s\",\n    \"use_new_terminal\": true\n  }", label, target;
-    count++;
-}' "$MAKEFILE" >> "$OUTPUT_FILE"
+
+# Parse project Makefile if it exists
+if [ -f "$MAKEFILE" ]; then
+    awk -F'[:#]' '/^[a-zA-Z0-9_-]+:[[:space:]]*[^#]*#/ {
+        target = $1; label = $3;
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", target);
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", label);
+        if (count > 0) printf ",\n";
+        printf "  {\n    \"label\": \"%s\",\n    \"command\": \"make %s\",\n    \"use_new_terminal\": true\n  }", label, target;
+        count++;
+    }' "$MAKEFILE" >> "$OUTPUT_FILE"
+    # Add comma before global task if we had project tasks
+    if [ -s "$MAKEFILE" ]; then
+        printf ",\n" >> "$OUTPUT_FILE"
+    fi
+fi
 
 # Add the Global Rebuild task
-printf ",\n  {\n    \"label\": \"🛠️  GLOBAL: Rebuild Master\",\n    \"command\": \"make -C ../dev-init build-master\",\n    \"use_new_terminal\": true\n  }\n" >> "$OUTPUT_FILE"
+printf "  {\n    \"label\": \"🛠️  GLOBAL: Rebuild Master\",\n    \"command\": \"make -C ../dev-init build-master\",\n    \"use_new_terminal\": true\n  }\n" >> "$OUTPUT_FILE"
 echo "]" >> "$OUTPUT_FILE"

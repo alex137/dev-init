@@ -1,5 +1,5 @@
-# Environment files (may contain SSH keys)
-.devcontainer/.env
+# Environment files (project config + secrets)
+.env.local
 
 # Editor-generated files
 .zed/tasks.json

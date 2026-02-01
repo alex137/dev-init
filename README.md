@@ -31,12 +31,12 @@ This gives you a **forced review checkpoint** - nothing leaves your machine with
 
 Claude Code settings and history persist between sessions, but **credentials are automatically deleted** on container startup. This prevents malicious packages from stealing your API key.
 
-To authenticate, pass your API key as an environment variable (never written to disk):
+To authenticate, add your API key to `.env.local` (gitignored, never committed):
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-make up
-make shell
+echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env.local
+./dev up
+./dev shell
 claude  # Works immediately, no login needed
 ```
 
@@ -55,13 +55,13 @@ What they **cannot** do:
 **To eliminate this risk**, use a two-phase workflow:
 ```bash
 # Phase 1: Install packages WITHOUT the API key
-make up && make shell
+./dev up && ./dev shell
 npm install some-package
 exit
 
-# Phase 2: Restart WITH the key for Claude work
-export ANTHROPIC_API_KEY=sk-ant-...
-make up && make shell
+# Phase 2: Add key and restart for Claude work
+echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env.local
+./dev restart && ./dev shell
 claude
 ```
 
@@ -114,10 +114,11 @@ make -f ../dev-init/Makefile dev-init
 
 **What happens?**
 
-* A 1-line `Dockerfile` is created: `FROM dev-env:latest`.
-* A `docker-compose.yml` is linked.
-* The `Makefile` is synchronized.
-* **Zed Tasks** are generated, including a global link back to the Master.
+* `.devcontainer/` is symlinked to dev-init (auto-updates when dev-init changes)
+* `./dev` wrapper script is created for container commands
+* `.gitignore` is updated to exclude dev-init artifacts
+* `.env.local` is created with project name and SSH port
+* **Zed Tasks** are generated, including a global link back to the Master
 
 ---
 
@@ -127,11 +128,12 @@ make -f ../dev-init/Makefile dev-init
 
 | Command | Action |
 | --- | --- |
-| `make up` | Starts your project container in the background. |
-| `make shell` | Opens a terminal inside the running container. |
-| `make down` | Stops and removes the container. |
-| `make fresh` | Resets the container (removes and restarts). |
-| `make setup-zed` | Refreshes your editor UI from the current Makefile. |
+| `./dev` | Shows available commands |
+| `./dev up` | Starts your project container in the background |
+| `./dev shell` | Opens a terminal inside the running container |
+| `./dev down` | Stops and removes the container |
+| `./dev restart` | Restarts container (preserves Claude auth) |
+| `./dev fresh` | Resets the container (may lose Claude auth) |
 
 ### 2. The "Command Center" (Zed)
 
@@ -151,15 +153,11 @@ You can SSH into the container for remote access (e.g., from a laptop while trav
 
 #### Local Development
 
-For local development, set your SSH public key before starting the container:
+For local development, set your SSH public key in `.env.local`:
 
 ```bash
-# Add to your .env file (recommended)
-echo "SSH_AUTHORIZED_KEYS=$(cat ~/.ssh/id_ed25519.pub)" >> .env
-
-# Or export before docker-compose up
-export SSH_AUTHORIZED_KEYS="$(cat ~/.ssh/id_ed25519.pub)"
-docker-compose up -d
+echo "SSH_AUTHORIZED_KEYS=$(cat ~/.ssh/id_ed25519.pub)" >> .env.local
+./dev up
 ```
 
 Then connect:
@@ -173,9 +171,9 @@ To securely access your dev container from anywhere:
 
 1. **Expose the SSH port** on your server/home machine (use your router's port forwarding or a service like Tailscale/Cloudflare Tunnel)
 
-2. **Set your SSH public key** in the container's environment:
+2. **Set your SSH public key** in `.env.local`:
    ```bash
-   # In your .env file on the server
+   # In your .env.local file on the server
    SSH_AUTHORIZED_KEYS="ssh-ed25519 AAAA... your-email@example.com"
    ```
 
@@ -217,18 +215,20 @@ This gives the container push access to *one specific repo* while keeping your m
 
 ### Project-Specific Tools
 
-If a project needs a unique tool that doesn't belong in the Master Image, just add it to that project's local `.devcontainer/Dockerfile`:
+If a project needs a unique tool that doesn't belong in the Master Image, install it inside the container:
 
-```dockerfile
-FROM dev-env:latest
-RUN apt-get install -y some-special-tool
-
+```bash
+./dev shell
+sudo apt-get install -y some-special-tool
 ```
+
+For tools that should persist, add them to the Master Image in dev-init and run `make build-master`.
 
 ---
 
 ## 🛠️ Troubleshooting
 
-* **"Image dev-env:latest not found":** You haven't run `make build-master` in the `dev-init` folder yet.
+* **"Image dev-env:latest not found":** Run `make build-master` in the `dev-init` folder first.
 * **"Permission Denied":** If files are owned by root, run `sudo chown -R $USER:$USER .` on your host.
-* **Zed connection fails:** Run `make status` to ensure the SSH server inside the container is reachable.
+* **Container commands not working:** Make sure you're using `./dev` (not `make`) in child repos.
+* **Updates not propagating:** Verify `.devcontainer` is a symlink: `ls -la .devcontainer`

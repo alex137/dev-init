@@ -11,7 +11,9 @@ FROM mcr.microsoft.com/devcontainers/base:trixie@sha256:0fea8c4b6512d8bb1a1419ef
 USER root
 
 # ============================================================
-# STABLE LAYERS - Rarely change, cached long-term
+# STABLE LAYERS - DO NOT MODIFY without rebuilding Haskell image
+# Any change here invalidates ALL cached layers (including texlive)
+# For quick additions, use the EXTRAS section at the bottom
 # ============================================================
 
 # 1. Core System Packages (change rarely)
@@ -75,7 +77,11 @@ RUN mkdir -p /var/run/sshd && \
 
 # ============================================================
 # EXTRAS - Add new packages here (fast rebuilds)
+# Changes here only rebuild from this point forward
 # ============================================================
+
+# Fix Rust access for non-root user
+RUN chmod 755 /root
 
 # Extra apt packages - add new ones here
 RUN apt-get update && apt-get install -y \
@@ -88,11 +94,24 @@ RUN apt-get update && apt-get install -y \
     fonts-font-awesome \
     && rm -rf /var/lib/apt/lists/*
 
+# GitHub CLI
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+    apt-get update && apt-get install -y gh && rm -rf /var/lib/apt/lists/*
+
+# Homebrew
+USER user
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" && \
+    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/user/.bashrc
+USER root
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
+
 # Extra npm packages - add new ones here
 RUN npm install -g \
     @anthropic-ai/claude-code \
     @marp-team/marp-cli \
-    wrangler
+    wrangler \
+    pnpm
 
 # Claude secure wrapper - must come after claude-code install
 COPY .devcontainer/claude-secure.sh /usr/local/bin/claude-secure
