@@ -9,7 +9,15 @@
 
 ### Why This Matters
 
-When you run `npm install` or `pip install`, you're executing code written by strangers. In a normal setup, that code has access to:
+**Claude Code itself warns you about these risks.** When you start a session, you'll see:
+
+> *"Claude can make mistakes. You should always review Claude's responses, especially when running code."*
+>
+> *"Due to prompt injection risks, only use it with code you trust."*
+>
+> *"Claude Code may read, write, or execute files contained in this directory. This can pose security risks, so only use files and bash commands from trusted sources."*
+
+These warnings are real. When you run `npm install` or `pip install`, you're executing code written by strangers. In a normal setup, that code has access to:
 - Your SSH keys (push to any repo you have access to)
 - Your cloud credentials (`~/.aws`, `~/.gcp`)
 - Your API keys and tokens
@@ -29,18 +37,22 @@ This gives you a **forced review checkpoint** - nothing leaves your machine with
 
 ### Claude API Credentials
 
-Claude Code settings and history persist between sessions, but **credentials are automatically deleted** on container startup. This prevents malicious packages from stealing your API key.
+Claude Code settings and history persist between sessions, but **credentials are automatically protected** by a security wrapper that deletes them immediately after Claude reads them.
 
 To authenticate, add your API key to `.env.local` (gitignored, never committed):
 
 ```bash
 echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env.local
-./dev up
 ./dev shell
 claude  # Works immediately, no login needed
 ```
 
-**Remaining vulnerability:** If you set `ANTHROPIC_API_KEY` and then run `npm install` (or pip, cargo, etc.), a malicious package could read the key from the environment and exfiltrate it.
+**How the auto-nuke protection works:**
+1. On first run: complete OAuth manually, credential is saved + backed up
+2. On subsequent runs: credential is restored, then **deleted the instant Claude reads it**
+3. Claude continues from memory; `npm install` finds no credential file
+
+**Remaining vulnerability:** If you set `ANTHROPIC_API_KEY` and then run `npm install` (or pip, cargo, etc.), a malicious package could read the key from the environment.
 
 What an attacker could do with your key:
 - Run up your API bill
@@ -55,7 +67,7 @@ What they **cannot** do:
 **To eliminate this risk**, use a two-phase workflow:
 ```bash
 # Phase 1: Install packages WITHOUT the API key
-./dev up && ./dev shell
+./dev shell
 npm install some-package
 exit
 
@@ -135,13 +147,32 @@ make -f ../dev-init/Makefile dev-init
 | `./dev restart` | Restarts container (preserves Claude auth) |
 | `./dev fresh` | Resets the container (may lose Claude auth) |
 
-### 2. The "Command Center" (Zed)
+### 2. Rebuilding the Master Image
+
+When you update dev-init (pull new changes, or modify the Dockerfile/entrypoint), you need to rebuild the master image for changes to take effect:
+
+```bash
+cd ~/code/dev-init      # Go to dev-init folder
+git pull                # Get latest changes
+make build-master       # Rebuild dev-env:latest
+```
+
+Then restart your project containers to use the new image:
+
+```bash
+cd ~/code/your-project
+./dev fresh              # Removes old container, starts with new image
+```
+
+**Note:** Child projects inherit from `dev-env:latest`. They won't see Dockerfile/entrypoint changes until you rebuild the master.
+
+### 3. The "Command Center" (Zed)
 
 Press `Cmd+Shift+P` and type **"task: spawn"**. You will see your project tasks, plus:
 
 * `🛠️ GLOBAL: Rebuild Master Environment`
 
-Selecting this will trigger a rebuild of your global toolset from within your current project. Once finished, a simple `make up` (or "Docker Up" task) refreshes your container with the new tools.
+Selecting this will trigger a rebuild of your global toolset from within your current project. Once finished, a simple `./dev up` (or "Docker Up" task) refreshes your container with the new tools.
 
 ---
 

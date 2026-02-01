@@ -2,8 +2,8 @@
 # claude-secure: Wrapper that provides credentials only long enough for Claude to authenticate
 #
 # Security model:
-# 1. After first OAuth login, credential is stored in ~/.config/claude-code/
-# 2. On container startup, we move it to a backup location (.auth.json.bak)
+# 1. After first OAuth login, credential is stored in ~/.claude/.credentials.json
+# 2. On container startup, we move it to a backup location (.credentials.json.bak)
 # 3. Each `claude` invocation: copy backup to expected location
 # 4. inotifywait monitors for first read, then immediately deletes the copy
 # 5. Claude continues from memory; malicious packages find no credential file

@@ -60,7 +60,7 @@ RUN mkdir -p /home/$USERNAME/.npm-global && \
     su - $USERNAME -c "npm config set prefix '/home/$USERNAME/.npm-global'"
 ENV PATH="/home/user/.npm-global/bin:${PATH}"
 
-# 7. SSH Config
+# 7. SSH Config - Key-based auth only (secure for remote access)
 RUN mkdir -p /var/run/sshd && passwd -l root && \
     sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
     sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config && \
