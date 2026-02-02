@@ -59,5 +59,15 @@ if [ -f "$BACKUP_FILE" ]; then
     trap cleanup EXIT
 fi
 
+# Ask about skipping permissions if running interactively and flag not already set
+if [ -t 0 ] && [[ ! " $* " =~ "--dangerously-skip-permissions" ]]; then
+    echo "Container sandbox active. Skip permission prompts? [y/N] "
+    read -r -n 1 answer
+    echo
+    if [[ "$answer" =~ ^[Yy]$ ]]; then
+        exec "$REAL_CLAUDE" --dangerously-skip-permissions "$@"
+    fi
+fi
+
 # Run the real claude
 exec "$REAL_CLAUDE" "$@"
