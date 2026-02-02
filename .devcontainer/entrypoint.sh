@@ -53,10 +53,4 @@ if ! grep -q 'npm-global' /home/user/.bashrc 2>/dev/null; then
     chown user:user /home/user/.bashrc
 fi
 
-# Claude with permissions skipped - safe because container is the sandbox
-if ! grep -q 'alias claude-yolo' /home/user/.bashrc 2>/dev/null; then
-    echo 'alias claude-yolo="claude --dangerously-skip-permissions"' >> /home/user/.bashrc
-    chown user:user /home/user/.bashrc
-fi
-
 exec "$@"
