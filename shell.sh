@@ -8,8 +8,8 @@ if ! docker image inspect dev-env:latest >/dev/null 2>&1; then
     make -f "$SCRIPT_DIR/Makefile" build-master
 fi
 
-# Install dev-init if not already done
-if [ ! -L .devcontainer ]; then
+# Install dev-init if not already done (check both symlink and .env.local)
+if [ ! -L .devcontainer ] || [ ! -f .env.local ]; then
     make -f "$SCRIPT_DIR/Makefile" dev-init
 fi
 
