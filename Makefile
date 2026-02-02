@@ -1,6 +1,7 @@
 MASTER_IMAGE = dev-env:latest
 HASKELL_IMAGE = dev-env-haskell:latest
-PROJ_NAME = $(shell basename $$(pwd))
+# Sanitize project name for Docker (replace dots/invalid chars with hyphens)
+PROJ_NAME = $(shell basename $$(pwd) | tr '.' '-' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
 
 # Load variables from .env.local (project-specific config + secrets)
 -include .env.local

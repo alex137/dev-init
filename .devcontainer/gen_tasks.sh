@@ -6,7 +6,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # 1. Setup paths - Use the script's location to find the registry reliably
 # This assumes the registry is one level up from the .devcontainer folder
 REGISTRY_FILE="$SCRIPT_DIR/../projects.reg"
-PROJ_NAME=$(basename "$(pwd)")
+# Sanitize project name for Docker (replace dots and invalid chars with hyphens)
+PROJ_NAME=$(basename "$(pwd)" | tr '.' '-' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
 ENV_FILE=".env.local"
 START_PORT=2222
 
