@@ -2,8 +2,8 @@
 # One command to get into dev environment
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Always build master image (Docker caching makes it fast if unchanged)
-make -f "$SCRIPT_DIR/Makefile" build-master
+# Always build master image from dev-init directory (Docker caching makes it fast if unchanged)
+make -C "$SCRIPT_DIR" build-master
 
 # Install dev-init if not already done (check both symlink and .env.local)
 if [ ! -L .devcontainer ] || [ ! -f .env.local ]; then
