@@ -34,7 +34,8 @@ update-base: # Update pinned base image digest (run build-haskell after)
 
 build-master: # Build the Global Base Image (fast, requires build-haskell first)
 	@echo "🏗️  Building master image: $(MASTER_IMAGE)..."
-	@docker build -t $(MASTER_IMAGE) -f .devcontainer/Dockerfile .
+	@HASH=$$(cat .devcontainer/claude-secure.sh .devcontainer/entrypoint.sh | md5sum | cut -c1-8); \
+	docker build -t $(MASTER_IMAGE) -f .devcontainer/Dockerfile --build-arg CACHE_BUST=$$HASH .
 	@$(MAKE) test-master
 	@echo "✅ Master image ready."
 

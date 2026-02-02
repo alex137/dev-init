@@ -113,6 +113,9 @@ RUN npm install -g \
     wrangler \
     pnpm
 
+# Cache buster for scripts (changes when claude-secure.sh or entrypoint.sh change)
+ARG CACHE_BUST=default
+
 # Claude secure wrapper - must come after claude-code install
 COPY .devcontainer/claude-secure.sh /usr/local/bin/claude-secure
 RUN chmod +x /usr/local/bin/claude-secure && \
